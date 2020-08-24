@@ -1,7 +1,7 @@
-Param(  
-[Parameter(Mandatory=$false)]  
+Param(
+[Parameter(Mandatory=$false)]
 [string]$ArchiveConf
-)  
+)
 ##Provide Multiple recpts in "User1@total.com","user2@total.com" format string[] array
 $recipients = "User1@localhost.localdomain.com"
 
@@ -20,11 +20,11 @@ Function Total-Log
         [Parameter(Mandatory=$false)]
         [Alias('LogPath')]
         [string]$Path='C:\Logs\PowerShellLog.log',
-        
+
         [Parameter(Mandatory=$false)]
         [ValidateSet("Error","Warn","Info")]
         [string]$Level="Info",
-        
+
         [Parameter(Mandatory=$false)]
         [switch]$NoClobber
     )
@@ -35,13 +35,13 @@ Function Total-Log
     }
     Process
     {
-       
+
         if ((Test-Path $Path) -AND $NoClobber) {
             Write-Error "Log file $Path already exists, and you specified NoClobber. Either delete the file or specify a different name."
             Return
             }
 
-       
+
         elseif (!(Test-Path $Path)) {
             Write-Verbose "Creating $Path."
             $NewLogFile = New-Item $Path -Force -ItemType File
@@ -69,7 +69,7 @@ Function Total-Log
                 $LevelText = 'INFO'
                 }
             }
-        
+
         # Write log entry to $Path
         "$FormattedDate $LevelText $Message" | Out-File -FilePath $Path -Append
     }
@@ -78,18 +78,18 @@ Function Total-Log
     }
 }
 
-Function Create-HTMLTable{ 
-    param([array]$Array)      
-    $arrHTML = $Array | Select @{Name='Source Location';expression={$_.SourceFolder}}, 
+Function Create-HTMLTable{
+    param([array]$Array)
+    $arrHTML = $Array | Select @{Name='Source Location';expression={$_.SourceFolder}},
         @{Name='File Status';expression={$_.FilesStatus}},
         @{Name='Compression Status';expression={$_.zipStatus}},
         @{Name='Archive Rentention Status';expression={$_.RetentionStatus}}|ConvertTo-Html -As Table
-    $arrHTML[-1] = $arrHTML[-1].ToString().Replace('</body></html>'," ")    
+    $arrHTML[-1] = $arrHTML[-1].ToString().Replace('</body></html>'," ")
     Return $arrHTML[5..2000]
 }
 
-
-$Style = @"      
+##CapgemeniCode With BOOST Patch
+$Style = @"
     <style>
       body {
         font-family: "Helvetica Neue", Helvetica, sans-serif;
@@ -128,26 +128,25 @@ td {
   border: 1px solid gray;
 }
     </style>
-      
+
 "@
 # Creating head style and header title
 $output = $null
 $output = @()
 $output += '<html><head></head><body>'
-$output += 
+$output +=
 #Import hmtl style file
-$Style 
+$Style
 $output += "<h3 style='color: #0B2161'>Archive Report On "+$env:COMPUTERNAME+"</h3><h4 style='color: #999999'>"+ (Get-Date).ToString('dddd dd, MMMM yyyy  hh:mm tt')+"</h4>"
 $output += '<strong><font color="red">WARNING: </font></strong>'
-$output += "Please review attached logs.</br>"
+$output += "Please review attached report.</br>"
 $output += '</br>'
-
 $SCRIPT_PATH = $MyInvocation.MyCommand.Definition
 $SCRIPT_NAME = $MyInvocation.MyCommand.Name
 $EXECUTION_PATH = $SCRIPT_PATH.Replace($SCRIPT_NAME, "")
 $LOGFILE=($MyInvocation.MyCommand.Definition).Replace('ps1','log')
 $ZIPPED_LOGFILE = $LOGFILE.replace('.log','.zip')
-$DRIVE_NAME=(get-location).Drive.Name 
+$DRIVE_NAME=(get-location).Drive.Name
 If(Test-path $ZIPPED_LOGFILE) {Remove-item $ZIPPED_LOGFILE}
 
 if(test-path $LOGFILE){
@@ -164,7 +163,7 @@ if(test-path $LOGFILE){
 if($PSBoundParameters.ContainsKey('ArchiveConf')){
    Total-Log -Message "Loading $ArchiveConf" -Level Info -Path $LOGFILE
 }else{
-    $ArchiveConf = "Archive_logs_conf.csv"
+    $ArchiveConf = "./Archive_logs_conf.csv"
     Total-Log -Message "Args: -ArchiveConf is not passed setting up default $ArchiveConf" -Level Warn -Path $LOGFILE
 }
 $resultArray = @()
@@ -183,58 +182,58 @@ try{
         [int]$retentionpolicy = $_.retentionpolicy
         [int]$archivedaysvalue = "-$archivedays"
         [int]$retentionpolicyvalue = "-$retentionpolicy"
-        
+
         $foldername = (get-date).ToString("ddMMyyyyHHmmss")
         $ArchiveDate = $CurrentDate.AddDays($archivedaysvalue)
         $destpath = "$sourcefolder\$foldername"
         $obj = New-Object psobject -Property @{
             SourceFolder = $sourcefolder
-            FilesStatus = "Could Not Determine" 
+            FilesStatus = "Could Not Determine"
             RetentionStatus = "Could Not determine"
             zipStatus="Could Not Determine"
-            }       
-        
-        
+            }
+
+
         try{
             $filewritetime = Get-ChildItem -File -Recurse -Path $sourcefolder -Exclude "*.zip" -ErrorAction Stop| where {$_.LastWriteTime -lt $ArchiveDate} | select *
             if($filewritetime -eq $null){
-                Total-Log -Message "[Collecting-Files] $sourcefolder has no files older than $ArchiveDate" -Level Warn -Path $logfile 
+                Total-Log -Message "[Collecting-Files] $sourcefolder has no files older than $ArchiveDate" -Level Warn -Path $logfile
                 $obj.FilesStatus = "0 Files Older than $ArchiveDate"
                 $obj.zipStatus = "Skipped.."
-                                     
-            }else{                
+
+            }else{
                 md "$destpath"-Force -ErrorAction Stop
                 Total-Log -Message "[Folder-Creation] $destpath created for moving files older than $ArchiveDate" -Level info -Path $logfile
                 if(test-path $destpath){
                     $filewritetime | foreach {
                         $path = $_.FullName
-                        Total-Log -Message "Moving $path >>>> $destpath" -Level Info -Path $logfile 
+                        Total-Log -Message "Moving $path >>>> $destpath" -Level Info -Path $logfile
                         Move-Item $path $destpath -Force -ErrorAction Stop
                         }
-                    $total_size=[string]$($filewritetime|Measure-Object -Property length -sum).Sum                    
+                    $total_size=[string]$($filewritetime|Measure-Object -Property length -sum).Sum
                     $obj.FilesStatus =[string]$($filewritetime|measure).Count + " Files moved to reclaim {0:N2} MB of space" -f ($total_size/1MB)
                     try{
                         $zipfilename = "$sourcefolder\$foldername.zip"
                         Compress-Archive -Path "$destpath" -CompressionLevel Optimal -DestinationPath $zipfilename -ErrorAction Stop
                         Total-Log -Message "[Compression-Folder] Compression Started for $destpath to $zipfilename" -Level Info -path $logfile
                         $zipSize = $(Get-ChildItem $zipfilename -ErrorAction Stop|Select-Object Length).length
-                        $obj.zipStatus = "$zipfilename [{0:N2} MB] created, Reclaimed {1:N2} %" -f (($zipsize/1MB),(($total_size.Length - $zipSize.Length) / $total_size.Length) * 100)    
-                          
-                    }catch{ 
+                        $obj.zipStatus = "$zipfilename [{0:N2} MB] created, Reclaimed {1:N2} %" -f (($zipsize/1MB),(($total_size.Length - $zipSize.Length) / $total_size.Length) * 100)
+
+                    }catch{
                         $status = 'KO'
                         Total-Log -Message "[Compression-Folder] $_" -Level Error -Path $logfile
                         $obj.zipStatus = "[KO] $_"
                     }
                 }else{
                     Total-Log -Message "[Folder-Creation] $destpath does not exist" -Level Info -Path $logfile
-                    $obj.FilesStatus = "[KO] $destpath does not exist, file movement failed."                             
+                    $obj.FilesStatus = "[KO] $destpath does not exist, file movement failed."
                 }
           }
         }catch{
             Total-Log -Message "[Collecting-Files] $_" -Level error -Path $logfile
             $obj.Filesstatus = $_
         }
-        
+
         if($retentionpolicyvalue -ne 0){
             Total-Log -Message "[Archive-Retention] $sourcefolder policy found to remove archive with $retentionpolicy Days older, Initiating Archive Deletion" -level info -path $logfile
             $ArchiveretentionDate = $CurrentDate.AddDays($retentionpolicyvalue)
@@ -242,11 +241,11 @@ try{
                 $archiveFiles = Get-ChildItem $sourcefolder -Filter *.zip -ErrorAction Stop| where {$_.LastWriteTime -le $ArchiveretentionDate}
                 $totalArchive=$archiveFiles| Measure
                 Total-Log -Message "[Archive-Retention] $($totalArchive.count) Zip Files with $retentionpolicy Days older" -level info -path $logfile
-                foreach($archiveFile in $archiveFiles){ 
+                foreach($archiveFile in $archiveFiles){
                     Total-Log -Message "[Archive-Retention] Removing $archivefile" -Level info -Path $logfile
                     Remove-Item –path $archiveFile.FullName -ErrorAction Stop
                 }
-                $obj.RetentionStatus = "$($totalArchive.count) Zip Files older than $retentionpolicy days, removed"
+                $obj.RetentionStatus = "$($totalArchive.count) Zip Files with $retentionpolicy Days older Removed"
             }catch{
                 Total-Log -Message "[Archive-Retention] $_" -level ERROR -path $logfile
                 $obj.RetentionStatus=$_
@@ -257,10 +256,10 @@ try{
         }
         if($success -eq 'OK'){
             if (Test-Path $destpath){
-                try{ 
+                try{
                     Remove-Item -Path "$destpath" -Recurse -Force
-                    Total-Log -Message "[Removing-Folder] Removed $destpath" -Level info -Path $logfile             
-                }catch{ 
+                    Total-Log -Message "[Removing-Folder] Removed $destpath" -Level info -Path $logfile
+                }catch{
                     Total-Log -Message "[Removing-Folder] $_" -level Error -Path $logfile
                     $obj.FileStatus += "[KO] $_"
                 }
@@ -272,14 +271,14 @@ try{
     $output += Create-HTMLTable $resultArray
     $output += '</p>'
     $output += '</body></html>'
-    $output += '<div><p style="font-weight:bold; color:#999;"></div>'    
+    $output += '<div><p style="font-weight:bold; color:#999;">- BOOST Automation</div>'
+
     $output =  $output | Out-String
     Compress-Archive -Path $logfile -Update -DestinationPath $ZIPPED_LOGFILE
-    $endTime = Get-Date
-    Total-log -Message "The archive process completed $($endTime.ToString('yyyy-MM-ddTHH:mm:ss'))" -Level info -Path $LOGFILE
-    send-mailmessage -from "YourName@yourdomain.com" -to $recipients -subject "[Archival Status] $env:COMPUTERNAME | Archive Status" -BodyAsHtml $output -Attachment $ZIPPED_LOGFILE -smtpServer SMTP_SERVER
+    send-mailmessage -from "YourName@yourdomain.com" -to $recipients -subject "[Archival Status] $env:COMPUTERNAME | Archive Status" -BodyAsHtml $output -Attachment $ZIPPED_LOGFILE -smtpServer smtp.localdomain.com
     If(Test-path $ZIPPED_LOGFILE) {Remove-item $ZIPPED_LOGFILE}
 }catch{
     Total-Log -Message $_ -Level Error -Path $logfile
-    send-mailmessage -from "YourName@yourdomain.com" -to $recipients -subject "[Failure] $env:COMPUTERNAME | Archive Error" -BodyAsHtml "Hello, <BR><BR> There is an error occurred during archival operation, kindly review the attached logs." -Attachment $logfile -smtpServer SMTP_SERVER
+    send-mailmessage -from "YourName@yourdomain.com" -to $recipients -subject "[Failure] $env:COMPUTERNAME | Archive Error" -BodyAsHtml "Hello, <BR><BR> There is an error occurred during archival
+    operation, kindly review the attached logs." -Attachment $logfile -smtpServer smtp.localdomain.com
 }
