@@ -1,26 +1,13 @@
-﻿<#
-    .SYNOPSIS
-        This script is created for archive files and remove older zip file based on certain retention policy
-    .CHANE LOG
-        2019 - V.1.0 - Creatd by CapGemini 
-        2020 - V.1.1 - Modification by Rahhul TRIVEDI - BOOST
-        2020 - V.1.2 - BOOST Removed LastWriteTime to overcome MIM
-        2020 - V.2.0 - BOOST Patched Delete logic, Compression logic, retructured the functions
-                       BOOST Added logger moudle and HTML Module
-                       BOOST Added Parameter options
-                       BOOST Added Error Handeling
-#>
-
 Param(  
 [Parameter(Mandatory=$false)]  
 [string]$ArchiveConf
 )  
 ##Provide Multiple recpts in "User1@total.com","user2@total.com" format string[] array
-$recipients = "Rahul.Trivedi@external.total.com"
+$recipients = "User1@localhost.localdomain.com"
 
 Function Total-Log
 {
-    ##This function is written by Rahul TRIVEDI - BOOST for logging and trapping against the Archival issue
+    
     [CmdletBinding()]
     Param
     (
@@ -102,7 +89,6 @@ Function Create-HTMLTable{
 }
 
 
-##CapgemeniCode With BOOST Patch
 $Style = @"      
     <style>
       body {
@@ -178,7 +164,7 @@ if(test-path $LOGFILE){
 if($PSBoundParameters.ContainsKey('ArchiveConf')){
    Total-Log -Message "Loading $ArchiveConf" -Level Info -Path $LOGFILE
 }else{
-    $ArchiveConf = ".\Desktop\Archive_logs_conf.csv"
+    $ArchiveConf = "Archive_logs_conf.csv"
     Total-Log -Message "Args: -ArchiveConf is not passed setting up default $ArchiveConf" -Level Warn -Path $LOGFILE
 }
 $resultArray = @()
@@ -286,14 +272,14 @@ try{
     $output += Create-HTMLTable $resultArray
     $output += '</p>'
     $output += '</body></html>'
-    $output += '<div><p style="font-weight:bold; color:#999;">- BOOST Automation</div>'    
+    $output += '<div><p style="font-weight:bold; color:#999;"></div>'    
     $output =  $output | Out-String
     Compress-Archive -Path $logfile -Update -DestinationPath $ZIPPED_LOGFILE
     $endTime = Get-Date
     Total-log -Message "The archive process completed $($endTime.ToString('yyyy-MM-ddTHH:mm:ss'))" -Level info -Path $LOGFILE
-    #send-mailmessage -from "Rahul.Trivedi@external.Total.com" -to $recipients -subject "[Archival Status] $env:COMPUTERNAME | Archive Status" -BodyAsHtml $output -Attachment $ZIPPED_LOGFILE -smtpServer emeamaicli-el01.main.glb.corp.local
+    send-mailmessage -from "YourName@yourdomain.com" -to $recipients -subject "[Archival Status] $env:COMPUTERNAME | Archive Status" -BodyAsHtml $output -Attachment $ZIPPED_LOGFILE -smtpServer SMTP_SERVER
     If(Test-path $ZIPPED_LOGFILE) {Remove-item $ZIPPED_LOGFILE}
 }catch{
     Total-Log -Message $_ -Level Error -Path $logfile
-    #send-mailmessage -from "Rahul.Trivedi@external.Total.com" -to $recipients -subject "[Failure] $env:COMPUTERNAME | Archive Error" -BodyAsHtml "Hello, <BR><BR> There is an error occurred during archival operation, kindly review the attached logs. <BR><BR> - Rahul TRIVEDI <BR>BOOST Automation" -Attachment $logfile -smtpServer emeamaicli-el01.main.glb.corp.local
+    send-mailmessage -from "YourName@yourdomain.com" -to $recipients -subject "[Failure] $env:COMPUTERNAME | Archive Error" -BodyAsHtml "Hello, <BR><BR> There is an error occurred during archival operation, kindly review the attached logs." -Attachment $logfile -smtpServer SMTP_SERVER
 }
