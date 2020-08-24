@@ -1,0 +1,3 @@
+UNCPath,Archivedays,retentionpolicy
+D:\location\to\find\files\to\archive,60,7
+\\NetworkUNCPath\location\directory,120,0
